@@ -81,9 +81,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.environment != "production"
         else None
     )
+    # The app's own frontend + local dev server are always allowed, even when a
+    # CORS_ORIGINS env var overrides `settings.cors_origins` — a stale server
+    # side list must never lock the deployed frontend out (preflights would
+    # fail with 400 and every browser request would be blocked).
+    first_party_origins = (
+        "https://dentsense-frontend.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    allowed_origins = list(
+        dict.fromkeys([*first_party_origins, *settings.cors_origins])
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=allowed_origins,
         allow_origin_regex=allow_origin_regex,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
