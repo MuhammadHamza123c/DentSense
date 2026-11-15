@@ -7,14 +7,23 @@ that URL and its response is returned with one derived field per prediction:
 
 Security: the Roboflow API key is read from settings (SecretStr) and never
 returned, logged or included in error messages.
+
+Transport: a plain ``httpx`` call that mirrors, byte for byte, the request
+``inference-sdk``'s ``InferenceHTTPClient`` used to build for a URL input on
+the API v0 route. The SDK was dropped because its transitive dependencies
+(OpenCV, SciPy, PyAV, matplotlib, supervision — ~350 MB) were never used by
+this service and blew past serverless bundle-size limits.
 """
 
 from __future__ import annotations
 
 import asyncio
+import base64
 import time
 from collections.abc import Callable
 from typing import Any
+
+import httpx
 
 from app.config import Settings
 from app.exceptions import (
@@ -26,6 +35,111 @@ from app.exceptions import (
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+_ROBOFLOW_API_URL = "https://serverless.roboflow.com"
+# Same retry policy the SDK applied: 3 attempts, 1s constant interval.
+_RETRYABLE_STATUSES = {429, 503, 504}
+_MAX_ATTEMPTS = 3
+_RETRY_DELAY_SECONDS = 1.0
+
+
+class _RoboflowHTTPError(Exception):
+    """Non-200 reply from the Roboflow legacy inference route."""
+
+    def __init__(self, status_code: int) -> None:
+        super().__init__(f"Roboflow responded with HTTP {status_code}")
+        self.status_code = status_code
+
+
+class _RoboflowConnectionError(Exception):
+    """Network-level failure while calling the Roboflow inference route."""
+
+
+class _ImageFetchError(Exception):
+    """The stored photo could not be downloaded for analysis."""
+
+
+class RoboflowV0Client:
+    """Minimal drop-in for ``inference_sdk.InferenceHTTPClient`` (API v0).
+
+    Sends the same request the SDK built for a URL input::
+
+        POST https://serverless.roboflow.com/{project}/{version}
+            ?confidence=0&allow_reduced_mask_resolution=False
+            &overlap=0.14&disable_active_learning=False
+        Authorization: Bearer <api key>
+        Content-Type: application/json
+        <base64 of the original image bytes>
+
+    The API key travels only in the header — never in the URL.
+    """
+
+    def __init__(self, *, api_key: str, timeout_seconds: float) -> None:
+        self._api_key = api_key
+        self._http = httpx.AsyncClient(
+            timeout=timeout_seconds, follow_redirects=True
+        )
+
+    async def aclose(self) -> None:
+        await self._http.aclose()
+
+    async def infer_async(
+        self, image_url: str, model_id: str | None = None
+    ) -> Any:
+        """Download ``image_url``, run it through the hosted model, return JSON."""
+        project, _, version = (model_id or "").partition("/")
+        if not project or not version or "/" in version:
+            raise ConfigurationError(
+                "Damage detection is misconfigured on the server."
+            )
+
+        image_bytes = await self._download(image_url)
+        body = base64.b64encode(image_bytes).decode("utf-8")
+        url = f"{_ROBOFLOW_API_URL}/{project}/{version}"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._api_key}",
+        }
+        # The exact query string inference-sdk produced for our configuration
+        # (InferenceConfiguration defaults are excluded unless not-None).
+        params = {
+            "confidence": "0",
+            "allow_reduced_mask_resolution": "False",
+            "overlap": "0.14",
+            "disable_active_learning": "False",
+        }
+
+        for attempt in range(_MAX_ATTEMPTS):
+            try:
+                response = await self._http.post(
+                    url, params=params, headers=headers, content=body
+                )
+            except httpx.HTTPError as exc:
+                if attempt == _MAX_ATTEMPTS - 1:
+                    raise _RoboflowConnectionError("Roboflow request failed") from exc
+                await asyncio.sleep(_RETRY_DELAY_SECONDS)
+                continue
+            if (
+                response.status_code in _RETRYABLE_STATUSES
+                and attempt < _MAX_ATTEMPTS - 1
+            ):
+                await asyncio.sleep(_RETRY_DELAY_SECONDS)
+                continue
+            if response.status_code != 200:
+                raise _RoboflowHTTPError(response.status_code)
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise RuntimeError("Roboflow returned a non-JSON response") from exc
+
+    async def _download(self, image_url: str) -> bytes:
+        try:
+            response = await self._http.get(image_url)
+        except httpx.HTTPError as exc:
+            raise _ImageFetchError("photo download failed") from exc
+        if response.status_code != 200:
+            raise _ImageFetchError(f"photo download HTTP {response.status_code}")
+        return response.content
 
 
 class DamageDetectionService:
@@ -72,27 +186,25 @@ class DamageDetectionService:
         )
         return _with_damage_area(_as_payload(raw))
 
+    async def aclose(self) -> None:
+        """Release the shared HTTP client (called on app shutdown)."""
+        client, self._client = self._client, None
+        close = getattr(client, "aclose", None)
+        if close is not None:
+            await close()
+
     # -- Client handling ----------------------------------------------------
     def _build_client(self) -> Any:
-        from inference_sdk import InferenceConfiguration, InferenceHTTPClient
-
         api_key = self._settings.roboflow_api_key
         if api_key is None:
             raise ConfigurationError("Roboflow API key is missing.")
-        client = InferenceHTTPClient(
-            api_url="https://serverless.roboflow.com",
-            api_key=api_key.get_secret_value(),
-        ).configure(
-            InferenceConfiguration(
-                api_key_transport="header",
-                confidence_threshold=0,
-                iou_threshold=0.14,
-            )
-        )
         logger.info(
             "Roboflow client initialised (model=%s)", self._settings.roboflow_model_id
         )
-        return client
+        return RoboflowV0Client(
+            api_key=api_key.get_secret_value(),
+            timeout_seconds=self._settings.roboflow_timeout_seconds,
+        )
 
     async def _get_client(self) -> Any:
         if self._client is None:
@@ -150,7 +262,20 @@ def _with_damage_area(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _map_roboflow_error(exc: Exception) -> Exception:
-    """Translate SDK/Roboflow failures into safe API errors (no key leakage)."""
+    """Translate Roboflow client failures into safe API errors (no key leakage)."""
+    if isinstance(exc, ConfigurationError):
+        return exc
+    if isinstance(exc, _ImageFetchError):
+        logger.warning("Photo download for inference failed: %s", exc)
+        return ExternalServiceError(
+            "The uploaded image could not be fetched for analysis. Please try again."
+        )
+    if isinstance(exc, _RoboflowConnectionError):
+        logger.warning("Roboflow unreachable: %s", exc)
+        return ExternalServiceError(
+            "The damage detection service is unreachable. Please try again."
+        )
+
     status = getattr(exc, "status_code", None)
     logger.warning(
         "Roboflow inference failed: type=%s status=%s",
@@ -178,17 +303,5 @@ def _map_roboflow_error(exc: Exception) -> Exception:
     if isinstance(status, int) and status >= 500:
         return ServiceUnavailableError(
             "The damage detection service is temporarily unavailable."
-        )
-
-    name = type(exc).__name__
-    if name in {"HTTPServerConnectionError", "RetryError"}:
-        return ExternalServiceError(
-            "The damage detection service is unreachable. Please try again."
-        )
-    if name in {"APIKeyNotProvided", "InvalidModelIdentifier"}:
-        return ConfigurationError("Damage detection is misconfigured on the server.")
-    if name in {"InvalidInputFormatError", "InvalidURLImageInput", "EncodingError"}:
-        return ValidationAppError(
-            "The model could not process this image. Try a clearer photo."
         )
     return ExternalServiceError("Damage detection failed. Please try again.")

@@ -17,7 +17,7 @@ dependencies = [
     "python-multipart==0.0.20",
     "httpx==0.28.1",
     "supabase==2.34.1",
-    "inference-sdk==1.8.4",
+    "pillow==12.3.0",
 ]
 
 [tool.uv]

@@ -50,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
         yield
         await app.state.supabase.close()
+        await app.state.damage_detector.aclose()
         await app.state.pricing_service.aclose()
         await app.state.message_service.aclose()
         await app.state.mechanic_service.aclose()
