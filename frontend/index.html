@@ -722,7 +722,7 @@
         const lng = localStorage.getItem('ds_lng');
         const image_url = state.imageUrl || '';
         const waText = d.message + '\n\nImage: ' + image_url + '\nLocation: https://www.google.com/maps?q=' + lat + ',' + lng;
-        const waTarget = (state.selectedMechanic && state.selectedMechanic.phone) ? (function(p){ const digits = (p||'').replace(/\D/g,''); return digits.startsWith('0') ? '92' + digits.slice(1) : digits; })(state.selectedMechanic.phone) : '92343524065';
+        const waTarget = (state.selectedMechanic && state.selectedMechanic.phone) ? (function(p){ const digits = (p||'').replace(/\D/g,''); return digits.startsWith('0') ? '92' + digits.slice(1) : digits; })(state.selectedMechanic.phone) : '923034124938';
         const waLink = 'https://wa.me/' + waTarget + '?text=' + encodeURIComponent(waText);
         const mechLabel = state.selectedMechanic && state.selectedMechanic.name ? state.selectedMechanic.name : 'Mechanic';
         el.innerHTML = '<div class="glass rounded-2xl p-4 sm:p-5 mt-2">' +
