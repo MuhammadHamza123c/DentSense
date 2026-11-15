@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------
+# CarDamageAI backend runtime dependencies (Python 3.11)
+# ---------------------------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.11.7
+pydantic-settings==2.10.1
+email-validator==2.2.0
+python-dotenv==1.0.1
+python-multipart==0.0.20
+httpx==0.28.1
+supabase==2.34.1
+inference-sdk==1.8.4

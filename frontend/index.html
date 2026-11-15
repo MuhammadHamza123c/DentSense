@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+  <meta name="theme-color" content="#050810" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>DentSense — Car Damage AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'], display: ['Space Grotesk','Inter','sans-serif'] },
+          colors: { ink:'#050810', ink2:'#0a0e1a', accent:'#22d3ee', accent2:'#a78bfa', good:'#34d399', warn:'#fbbf24', bad:'#f87171' },
+          boxShadow: { glow:'0 0 60px -12px rgba(34,211,238,0.5)', glow2:'0 0 80px -20px rgba(167,139,250,0.45)', card:'0 8px 32px -8px rgba(0,0,0,0.4)' },
+        },
+      },
+    };
+  </script>
+  <style>
+    html,body{background:#050810;color:#e5e7eb}
+    body{background:radial-gradient(1400px 900px at 0% -10%,rgba(34,211,238,0.18),transparent 55%),radial-gradient(1100px 700px at 100% -5%,rgba(167,139,250,0.16),transparent 55%),radial-gradient(1000px 600px at 50% 120%,rgba(52,211,153,0.10),transparent 60%),#050810;min-height:100vh;overflow-x:hidden}
+    .glow-card{box-shadow:0 20px 60px -20px rgba(34,211,238,0.15),0 0 0 1px rgba(255,255,255,0.04);border-radius:1.5rem}
+    .gradient-border{position:relative;}
+    .gradient-border::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(34,211,238,0.35),rgba(167,139,250,0.25),transparent 70%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+    .pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:.25rem .65rem;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:#a5f3fc;background:rgba(34,211,238,.08)}
+    .pulse-dot{width:.5rem;height:.5rem;border-radius:999px;background:#22d3ee;box-shadow:0 0 10px #22d3ee;animation:pulse 1.6s ease-in-out infinite}
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+    .status-pill{display:inline-flex;align-items:center;gap:.5rem;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);color:#67e8f9;padding:.45rem .8rem;border-radius:999px;font-size:.78rem}
+    .step-glow{box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 30px -12px rgba(34,211,238,.35)}
+    .glass{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+    .glass-strong{background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+    .btn-primary{background:linear-gradient(135deg,#22d3ee,#a78bfa);color:#050810;font-weight:600;transition:transform .2s,box-shadow .2s,opacity .2s}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 20px 50px -12px rgba(34,211,238,.7)}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .btn-ghost{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);transition:background .2s,border-color .2s}
+    .btn-ghost:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.20)}
+    .input{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);transition:border-color .2s,box-shadow .2s,background .2s}
+    .input:focus{outline:none;border-color:#22d3ee;box-shadow:0 0 0 4px rgba(34,211,238,.12);background:rgba(255,255,255,.06)}
+    .input::placeholder{color:rgba(255,255,255,.35)}
+    /* dropdowns: black bg + white text so the list is readable */
+    select.input,select.input option,select.input optgroup{background:#000;color:#fff}
+    select.input{background:#000;border-color:rgba(255,255,255,.14);color:#fff;color-scheme:dark}
+    select.input option{background:#000;color:#fff}
+    select.input option:checked{background:#111827;color:#fff}
+    select.input:hover{border-color:rgba(34,211,238,.35)}
+    .toast{position:fixed;bottom:28px;right:28px;z-index:60;background:rgba(10,14,26,.97);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px);transform:translateY(20px);opacity:0;transition:all .3s;pointer-events:none;border-radius:16px;padding:14px 20px;font-size:13px;max-width:380px;box-shadow:0 20px 60px -10px rgba(0,0,0,.6)}
+    .toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
+    .spinner{border:2px solid rgba(255,255,255,.15);border-top-color:#22d3ee;border-radius:50%;width:18px;height:18px;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .canvas-wrap{position:relative;display:inline-block}
+    .canvas-wrap canvas{position:absolute;top:0;left:0}
+    .modal-backdrop{background:rgba(0,0,0,.7);backdrop-filter:blur(8px)}
+    .fade-in{animation:fadeIn .5s ease both}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+    .tab.active{background:linear-gradient(135deg,rgba(34,211,238,.15),rgba(167,139,250,.15));border-color:rgba(34,211,238,.4);color:#fff;box-shadow:0 0 20px -8px rgba(34,211,238,.3)}
+    .chip{display:inline-flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10)}
+    .card-hover{transition:transform .25s,box-shadow .25s,border-color .25s}
+    .card-hover:hover{transform:translateY(-4px);border-color:rgba(34,211,238,.35);box-shadow:0 24px 50px -30px rgba(34,211,238,.6)}
+    .glow-ring{box-shadow:0 0 0 1px rgba(34,211,238,.22),0 30px 70px -45px rgba(34,211,238,.9)}
+    .hero-grid{background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(circle at 50% 40%,#000,transparent 75%);mask-image:radial-gradient(circle at 50% 40%,#000,transparent 75%)}
+
+    /* ---------- touch / Android base ---------- */
+    *{-webkit-tap-highlight-color:transparent}
+    html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+    body{touch-action:manipulation;overscroll-behavior-y:contain}
+    a,button,label,select,input,textarea{touch-action:manipulation}
+    img,video,canvas{max-width:100%}
+    .whitespace-pre-wrap{overflow-wrap:anywhere;word-break:break-word}
+    @media (max-width:640px){
+      /* Android Chrome zooms into fields <16px — keep controls at 16px */
+      input.input,select.input,textarea.input{font-size:16px !important}
+      nav.sticky{padding-top:env(safe-area-inset-top)}
+      .toast{left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:none;text-align:center;font-size:12.5px;padding:12px 14px}
+      .canvas-wrap{display:block !important;width:100%}
+      .canvas-wrap img{display:block;width:100%;height:auto}
+      .btn-primary{min-height:46px}
+      #panel.panel-shell{padding-bottom:calc(2rem + env(safe-area-inset-bottom))}
+      #modal .modal-sheet{border-radius:1.5rem 1.5rem 0 0;padding-bottom:calc(1.75rem + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+      h1,h2,h3{letter-spacing:-.01em}
+    }
+  </style>
+  <link rel="icon" type="image/png" href="images%20(1).png" />
+  <link rel="shortcut icon" type="image/png" href="images%20(1).png" />
+</head>
+<body class="font-sans antialiased">
+  <div id="app"></div>
+  <div id="toast" class="toast"></div>
+  <div id="modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop"></div>
+
+  <script src="config.js"></script>
+  <script>
+    /* ---------- Backend base URL ------------------------------------------
+       Config file: frontend/config.js  ->  window.DS_CONFIG.API_BASE_URL
+       Priority:  ?api=<url> query param  >  config.js  >  auto (host:8000) */
+    const API = (function () {
+      const cfg = (window.DS_CONFIG && window.DS_CONFIG.API_BASE_URL) || '';
+      let base = '';
+      try { base = new URLSearchParams(location.search).get('api') || ''; } catch (e) {}
+      if (!base) base = cfg;
+      if (base) return String(base).replace(/\/+$/, '');
+      const host = (location.hostname && location.hostname !== '') ? location.hostname : '127.0.0.1';
+      return (location.protocol === 'https:' ? 'https://' : 'http://') + host + ':8000';
+    })();
+    const state = { token: localStorage.getItem('ds_token')||null, refreshToken: localStorage.getItem('ds_refresh_token')||null, user: null, profile: null, reportId: null, imageUrl: null, tab: 'detect', authMode: 'login', selectedMechanic: null, selectedDamages: [], carBrand: null };
+
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    function toast(msg, kind='info') {
+      const t = $('#toast');
+      const color = kind==='error'?'text-red-300':kind==='success'?'text-emerald-300':'text-cyan-200';
+      t.innerHTML = '<span class="'+color+'">'+msg+'</span>';
+      t.classList.add('show');
+      clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove('show'); }, 3400);
+    }
+
+    async function refreshAuth() {
+      if (!state.refreshToken) return false;
+      try {
+        const res = await fetch(API + '/api/v1/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: state.refreshToken })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.session) return false;
+        state.token = data.session.access_token;
+        state.refreshToken = data.session.refresh_token;
+        localStorage.setItem('ds_token', state.token);
+        localStorage.setItem('ds_refresh_token', state.refreshToken);
+        if (data.user) state.user = data.user;
+        return true;
+      } catch (e) { return false; }
+    }
+
+    async function api(path, opts) {
+      opts = opts || {};
+      const doFetch = function() {
+        const headers = Object.assign({}, opts.headers || {});
+        if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+        if (opts.json) { headers['Content-Type']='application/json'; opts.body = JSON.stringify(opts.json); }
+        return fetch(API+path, Object.assign({}, opts, {headers:headers}));
+      };
+      let res = await doFetch();
+      if (res.status === 401 && state.refreshToken) {
+        const ok = await refreshAuth();
+        if (ok) res = await doFetch();
+      }
+      const ct = res.headers.get('content-type')||'';
+      let data = null;
+      if (ct.includes('application/json')) data = await res.json(); else data = await res.text();
+      if (!res.ok) { const m = (data && data.error && data.error.message) || (typeof data==='string'?data:'Request failed'); throw new Error(m); }
+      return data;
+    }
+
+    function displayName() {
+      return (state.profile && state.profile.full_name) || (state.user && state.user.user_metadata && state.user.user_metadata.full_name) || (state.user && state.user.email) || 'Signed in';
+    }
+
+    function initials() {
+      const n = displayName().trim();
+      const parts = n.split(/\s+/).filter(Boolean);
+      if (!parts.length) return 'D';
+      return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase();
+    }
+
+    function decodeJwt(token) {
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+        return payload;
+      } catch(e) { return null; }
+    }
+
+    function requestLocation() {
+      if (!navigator.geolocation) return;
+      if (localStorage.getItem('ds_lat') && localStorage.getItem('ds_lng')) return;
+      navigator.geolocation.getCurrentPosition(function(pos){
+        localStorage.setItem('ds_lat', pos.coords.latitude);
+        localStorage.setItem('ds_lng', pos.coords.longitude);
+      }, function(){}, {enableHighAccuracy:true, timeout:10000, maximumAge:600000});
+    }
+
+    async function loadMe() {
+      if (!state.token) return;
+      try {
+        const d = await api('/api/v1/auth/me');
+        state.user = d.user || d;
+        state.profile = d.profile || null;
+      } catch(e) {
+        const p = decodeJwt(state.token);
+        if (p && (p.sub || p.user_id)) {
+          state.user = {
+            id: p.sub || p.user_id,
+            email: p.email,
+            user_metadata: p.user_metadata || (p.app_metadata || {}),
+          };
+          state.profile = state.profile || (p.user_metadata ? { full_name: p.user_metadata.full_name } : null);
+        } else {
+          state.token = null; state.refreshToken = null; localStorage.removeItem('ds_token'); localStorage.removeItem('ds_refresh_token');
+        }
+      }
+    }
+
+    /* ---------- shell ---------- */
+    function landing() {
+      return `
+        <div class="min-h-screen">
+          <nav class="sticky top-0 z-40 backdrop-blur-xl bg-ink/60 border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shadow-glow">
+                  <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <span class="font-display font-bold text-xl sm:text-2xl tracking-tight">Dent<span class="text-cyan-400">Sense</span></span>
+              </div>
+              <div class="flex items-center gap-2 sm:gap-3">
+                <button id="openLogin" class="btn-ghost rounded-xl px-3.5 sm:px-5 py-2.5 text-sm font-medium">Sign in</button>
+                <button id="openSignup" class="btn-primary rounded-xl px-3.5 sm:px-5 py-2.5 text-sm">Get started</button>
+              </div>
+            </div>
+          </nav>
+
+          <section class="relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-12 sm:pt-24 pb-16 sm:pb-28 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+              <div class="fade-in">
+                <h1 class="font-display text-[2.1rem] leading-[1.08] sm:text-6xl lg:text-7xl font-bold sm:leading-[1.05] tracking-tight">
+                  Detect damage. <span class="bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">Price the repair.</span> Share the report.
+                </h1>
+                <div class="mt-6 flex flex-wrap gap-2.5">
+                  <span class="chip rounded-full px-4 py-2 text-sm text-cyan-200 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>Detect</span>
+                  <span class="chip rounded-full px-4 py-2 text-sm text-violet-200 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Price</span>
+                  <span class="chip rounded-full px-4 py-2 text-sm text-emerald-200 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>Share</span>
+                </div>
+                <p class="mt-6 sm:mt-8 text-base sm:text-xl text-gray-300 max-w-xl leading-relaxed">Upload photo of Car we found Nearest Mechanic for you and Estimated lower price with direct contact of mechanic</p>
+                <div class="mt-7 sm:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <button id="ctaStart" class="btn-primary rounded-2xl px-8 py-4 text-base shadow-glow w-full sm:w-auto">Start for free</button>
+                  <button id="ctaDemo" class="btn-ghost rounded-2xl px-8 py-4 text-base w-full sm:w-auto">See how it works</button>
+                </div>
+                <div class="mt-9 sm:mt-12 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-sm text-gray-400">
+                  <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399]"></span>No credit card</div>
+                  <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee]"></span>PKR pricing</div>
+                  <div class="flex items-center gap-2.5"><span class="w-2.5 h-2.5 rounded-full bg-violet-400 shadow-[0_0_12px_#a78bfa]"></span>Roman Urdu summaries</div>
+                </div>
+              </div>
+              <div class="relative fade-in" style="animation-delay:.15s">
+                <div class="glass-strong rounded-3xl p-5 shadow-glow2 glow-ring">
+                  <div class="relative rounded-2xl overflow-hidden bg-black/40 aspect-video">
+                    <img src="https://ivdlmmkijtbcrzhiaypp.supabase.co/storage/v1/object/public/damage-images/a53f88e8-906e-4bd0-9bcd-9c7ee980daef/Data-Segmentation.jpg" alt="car" class="w-full h-full object-cover opacity-90" />
+                    <div class="absolute top-4 left-4 glass rounded-xl px-4 py-2 text-sm">
+                      <span class="text-emerald-300 font-bold">₨ 31,500</span> <span class="text-gray-400">estimated</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="howitworks" class="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+            <div class="text-center mb-10 sm:mb-14">
+              <h2 class="font-display text-3xl sm:text-5xl font-bold tracking-tight">How it works</h2>
+              <p class="text-gray-400 mt-4 max-w-2xl mx-auto text-base sm:text-lg">From a single photo to a priced, shareable repair report — in four steps.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+              <div class="glass rounded-2xl p-6 sm:p-7 card-hover relative">
+                <div class="absolute -top-4 -left-4 w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center font-display font-bold text-ink shadow-glow">1</div>
+                <h3 class="font-semibold text-lg mb-2 mt-2">Upload photo</h3>
+                <p class="text-sm text-gray-400 leading-relaxed">Take or upload a clear photo of the damaged car. We store it securely and get a public URL.</p>
+              </div>
+              <div class="glass rounded-2xl p-6 sm:p-7 card-hover relative">
+                <div class="absolute -top-4 -left-4 w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center font-display font-bold text-ink shadow-glow2">2</div>
+                <h3 class="font-semibold text-lg mb-2 mt-2">Detect damage</h3>
+                <p class="text-sm text-gray-400 leading-relaxed">Our vision model finds every dent, scratch and damaged part with bounding boxes and confidence.</p>
+              </div>
+              <div class="glass rounded-2xl p-6 sm:p-7 card-hover relative">
+                <div class="absolute -top-4 -left-4 w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-display font-bold text-ink">3</div>
+                <h3 class="font-semibold text-lg mb-2 mt-2">Price & message</h3>
+                <p class="text-sm text-gray-400 leading-relaxed">AI prices each repair in PKR (scaled by damage area) and writes a Roman-Urdu summary.</p>
+              </div>
+              <div class="glass rounded-2xl p-6 sm:p-7 card-hover relative">
+                <div class="absolute -top-4 -left-4 w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-display font-bold text-ink">4</div>
+                <h3 class="font-semibold text-lg mb-2 mt-2">Share & contact</h3>
+                <p class="text-sm text-gray-400 leading-relaxed">Share the report on WhatsApp and contact the nearest mechanic with an estimated lower price.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+            <div class="glass-strong rounded-3xl p-6 sm:p-16 text-center relative overflow-hidden">
+              <div class="absolute inset-0 hero-grid opacity-30"></div>
+              <div class="relative">
+                <h2 class="font-display text-3xl sm:text-5xl font-bold tracking-tight">Ready to inspect your car?</h2>
+                <p class="text-gray-400 mt-4 max-w-xl mx-auto text-base sm:text-lg">Create a free account and run your first damage check in under a minute.</p>
+                <div class="mt-7 sm:mt-8 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                  <button id="ctaStart2" class="btn-primary rounded-2xl px-8 py-4 text-base shadow-glow w-full sm:w-auto">Create account</button>
+                  <button id="openLogin2" class="btn-ghost rounded-2xl px-8 py-4 text-base w-full sm:w-auto">I already have one</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer class="max-w-7xl mx-auto px-4 sm:px-6 pb-10 pt-6 text-center text-xs text-gray-500 leading-relaxed">
+            <div class="mb-4 h-px w-full max-w-xs mx-auto bg-gradient-to-r from-transparent via-white/15 to-transparent"></div>
+            DentSense · AI estimates only · Not a verified inspection or mechanic quotation
+            <div class="mt-4 text-[11px] tracking-wide text-gray-400">
+              Designed and developed by
+              <span class="font-display font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-emerald-300 bg-clip-text text-transparent">Muhammad Hamza</span>
+            </div>
+          </footer>
+        </div>`;
+    }
+
+    function appShell() {
+      return `
+        <div class="min-h-screen">
+          <nav class="sticky top-0 z-40 backdrop-blur-2xl bg-ink/70 border-b border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shadow-glow shrink-0">
+                  <svg class="w-5 h-5 sm:w-6 sm:h-6 text-ink" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div class="flex flex-col leading-tight">
+                  <span class="font-display font-bold text-lg sm:text-2xl tracking-tight">Dent<span class="text-cyan-400">Sense</span></span>
+                  <span class="hidden sm:block text-[10px] uppercase tracking-[0.2em] text-gray-500">Car Damage AI</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 sm:gap-4">
+                <div class="relative">
+                  <div class="rounded-xl p-[1.5px] bg-gradient-to-br from-cyan-400 via-violet-500 to-emerald-400">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-[11px] bg-ink/80 flex items-center justify-center font-display font-extrabold text-sm sm:text-base text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 via-violet-300 to-emerald-300">${initials()}</div>
+                  </div>
+                  <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-emerald-400 ring-2 ring-ink shadow-[0_0_8px_#34d399]"></span>
+                </div>
+                <div class="flex flex-col leading-tight max-w-[86px] sm:max-w-xs">
+                  <span class="text-xs sm:text-sm font-bold text-white truncate tracking-tight">${displayName()}</span>
+                  <span class="flex items-center gap-1">
+                    <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
+                    <span class="text-[8px] sm:text-[9px] uppercase tracking-[0.18em] text-emerald-300 font-semibold">Online</span>
+                  </span>
+                </div>
+                <button id="logoutBtn" class="ml-1 sm:ml-2 btn-ghost rounded-xl w-10 h-10 sm:w-auto sm:h-10 sm:px-4 flex items-center justify-center sm:justify-start gap-2 text-xs sm:text-sm shrink-0 hover:text-red-300 hover:border-red-400/30" aria-label="Sign out">
+                  <svg class="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                  <span class="hidden sm:inline">Sign out</span>
+                </button>
+              </div>
+            </div>
+          </nav>
+          <div class="max-w-5xl mx-auto panel-shell px-4 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6" id="panel"></div>
+          <div class="max-w-5xl mx-auto px-4 sm:px-6 pb-6 text-center text-[11px] text-gray-500">
+            <span class="mb-3 h-px block w-full max-w-xs mx-auto bg-gradient-to-r from-transparent via-white/15 to-transparent"></span>
+            Designed and developed by
+            <span class="font-display font-semibold bg-gradient-to-r from-cyan-300 via-violet-300 to-emerald-300 bg-clip-text text-transparent">Muhammad Hamza</span>
+          </div>
+        </div>`;
+    }
+
+    function panel(title, subtitle, body) {
+      return `<div class="glass-strong rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-glow fade-in">
+        <div class="mb-5 sm:mb-6">
+          <h2 class="font-display text-xl sm:text-3xl font-bold tracking-tight">${title}</h2>
+          <p class="text-xs sm:text-sm text-gray-400 mt-2 leading-relaxed">${subtitle}</p>
+        </div>
+        ${body}
+      </div>`;
+    }
+
+    /* ---------- single panel (detect + price + mechanics + message) ---------- */
+    function detectPanel() {
+      return panel('Detect damage', 'Upload or capture a car photo — stored, analysed, priced and matched with a mechanic', `
+        <div class="space-y-5 sm:space-y-6">
+          <div id="dropZone" class="glass rounded-3xl p-6 sm:p-8 text-center gradient-border hover:border-cyan-400/40 transition cursor-pointer">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-5 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-violet-500/30 flex items-center justify-center shadow-glow">
+              <svg class="w-8 h-8 sm:w-10 sm:h-10 text-cyan-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </div>
+            <h3 class="font-display text-lg sm:text-2xl font-bold mb-1 tracking-tight">Drop a photo here or choose below</h3>
+            <p class="text-xs sm:text-sm text-gray-400 mb-5 sm:mb-6">Drag & drop · or pick from gallery · or use camera</p>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+              <label class="btn-primary rounded-2xl px-6 py-3.5 text-sm font-semibold cursor-pointer inline-flex items-center justify-center gap-2 w-full sm:w-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Choose from gallery
+                <input id="detectFile" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+              </label>
+              <label class="btn-ghost rounded-2xl px-6 py-3.5 text-sm font-medium cursor-pointer inline-flex items-center justify-center gap-2 w-full sm:w-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+                Use camera
+                <input id="detectCamera" type="file" accept="image/*" capture="environment" class="hidden" />
+              </label>
+            </div>
+            <div id="selectedFileName" class="text-[11px] sm:text-xs text-cyan-300 mt-3 min-h-[1rem] break-all"></div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] sm:text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide">Car company</label>
+            <select id="detectBrand" class="input w-full rounded-2xl px-4 py-3.5 text-base">
+              <option value="">Select your car company</option>
+              <option>Suzuki</option>
+              <option>Toyota</option>
+              <option>Honda</option>
+              <option>Nissan</option>
+              <option>Hyundai</option>
+              <option>Kia</option>
+              <option>Daihatsu</option>
+              <option>Mitsubishi</option>
+              <option>Mazda</option>
+              <option>Ford</option>
+              <option>Chevrolet</option>
+              <option>Isuzu</option>
+              <option>Prince</option>
+              <option>United</option>
+              <option>BMW</option>
+              <option>Mercedes-Benz</option>
+              <option>Audi</option>
+              <option>Volkswagen</option>
+              <option>Lexus</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <button id="detectBtn" class="btn-primary w-full rounded-2xl py-4 min-h-[52px] text-sm font-semibold flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            Detect damage
+          </button>
+          <div id="detectStatus" class="text-[11px] sm:text-xs text-gray-400 px-1 min-h-[1.2rem]"></div>
+
+          <div class="canvas-wrap rounded-3xl overflow-hidden border border-white/10 bg-black/40 inline-block max-w-full">
+            <img id="detectImg" class="max-w-full hidden rounded-3xl" />
+            <canvas id="detectCanvas" class="hidden"></canvas>
+          </div>
+          <div id="detectResult" class="hidden"></div>
+
+          <div id="detectDamageList" class="hidden"></div>
+
+          <div id="detectMechanics" class="mt-2"></div>
+
+          <div id="detectMessage"></div>
+        </div>
+      `);
+    }
+
+    function renderPanel() {
+      const p = document.getElementById('panel');
+      if (!p) return;
+      p.innerHTML = detectPanel();
+      bindPanel();
+    }
+
+    function bindPanel() {
+      const bv = document.getElementById('detectBrand'); if (bv) { if (state.carBrand) bv.value = state.carBrand; bv.addEventListener('change', function(){ state.carBrand = bv.value || null; }); }
+      const df = document.getElementById('detectFile'); if (df) df.addEventListener('change', function(){ const f = df.files[0]; const el = document.getElementById('selectedFileName'); if (el) el.textContent = f ? 'Selected: ' + f.name : ''; });
+      const dc = document.getElementById('detectCamera'); if (dc) dc.addEventListener('change', function(){ const f = dc.files[0]; const el = document.getElementById('selectedFileName'); if (el) el.textContent = f ? 'Captured: ' + f.name : ''; });
+      const db = document.getElementById('detectBtn'); if (db) db.addEventListener('click', doDetect);
+      const dz = document.getElementById('dropZone'); if (dz) {
+        const dragOver = function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add('border-cyan-400/60'); };
+        const dragLeave = function(){ dz.classList.remove('border-cyan-400/60'); };
+        const drop = function(e){
+          e.preventDefault(); e.stopPropagation(); dz.classList.remove('border-cyan-400/60');
+          const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (f) {
+            const dt = new DataTransfer(); dt.items.add(f);
+            const fi = document.getElementById('detectFile'); fi.files = dt.files;
+            const el = document.getElementById('selectedFileName'); if (el) el.textContent = 'Dropped: ' + f.name;
+          }
+        };
+        dz.addEventListener('dragover', dragOver);
+        dz.addEventListener('dragleave', dragLeave);
+        dz.addEventListener('drop', drop);
+        // Mobile: tapping anywhere in the card opens the gallery picker.
+        dz.addEventListener('click', function(e){
+          if (e.target && e.target.closest && e.target.closest('label,button,input,a')) return;
+          const fi = document.getElementById('detectFile'); if (fi) fi.click();
+        });
+      }
+    }
+
+    function bind(root) {
+      const ol = root.querySelector('#openLogin'); if (ol) ol.addEventListener('click', function(){ openAuth('login'); });
+      const os = root.querySelector('#openSignup'); if (os) os.addEventListener('click', function(){ openAuth('signup'); });
+      const ol2 = root.querySelector('#openLogin2'); if (ol2) ol2.addEventListener('click', function(){ openAuth('login'); });
+      const cs = root.querySelector('#ctaStart'); if (cs) cs.addEventListener('click', function(){ openAuth('signup'); });
+      const cs2 = root.querySelector('#ctaStart2'); if (cs2) cs2.addEventListener('click', function(){ openAuth('signup'); });
+      const cd = root.querySelector('#ctaDemo'); if (cd) cd.addEventListener('click', function(){ var el=document.getElementById('howitworks'); if(el) el.scrollIntoView({behavior:'smooth'}); });
+      const lo = root.querySelector('#logoutBtn'); if (lo) lo.addEventListener('click', doLogout);
+    }
+
+    /* ---------- auth ---------- */
+    function openAuth(mode) {
+      state.authMode = mode || 'login';
+      const m = document.getElementById('modal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      m.innerHTML = '<div class="glass-strong modal-sheet rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-md fade-in shadow-glow2">'+
+        '<div class="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4 sm:hidden"></div>'+
+        '<div class="flex items-center justify-between mb-5 sm:mb-6"><h3 class="font-display text-xl sm:text-2xl font-bold">'+(state.authMode==='login'?'Welcome back':'Create account')+'</h3><button id="closeModal" class="btn-ghost rounded-xl w-10 h-10 flex items-center justify-center text-gray-400" aria-label="Close">✕</button></div>'+
+        '<div class="flex gap-2 mb-5 sm:mb-6 p-1.5 glass rounded-2xl">'+
+          '<button data-mode="login" class="tab flex-1 py-3 rounded-xl text-sm '+(state.authMode==='login'?'active':'')+'">Sign in</button>'+
+          '<button data-mode="signup" class="tab flex-1 py-3 rounded-xl text-sm '+(state.authMode==='signup'?'active':'')+'">Sign up</button>'+
+        '</div>'+
+        '<div id="authForm" class="space-y-3"></div><div id="authErr" class="text-xs text-red-300 mt-3"></div></div>';
+      renderAuthForm(state.authMode);
+      document.getElementById('closeModal').addEventListener('click', closeModal);
+      m.querySelectorAll('[data-mode]').forEach(function(b){ b.addEventListener('click', function(){ state.authMode=b.dataset.mode; renderAuthForm(state.authMode); m.querySelectorAll('[data-mode]').forEach(function(x){ x.classList.toggle('active', x.dataset.mode===state.authMode); }); }); });
+    }
+    function closeModal() { const m=document.getElementById('modal'); m.classList.add('hidden'); m.classList.remove('flex'); m.innerHTML=''; }
+    function renderAuthForm(mode) {
+      const f = document.getElementById('authForm');
+      const eye = '<button type="button" id="togglePass" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-300 transition" aria-label="Show password"><svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>';
+      if (mode === 'login') {
+        f.innerHTML = '<input id="aEmail" type="email" placeholder="Email" class="input w-full rounded-2xl px-4 py-4 sm:py-3.5 text-sm" />'+
+          '<div class="relative"><input id="aPass" type="password" placeholder="Password" class="input w-full rounded-2xl px-4 py-4 sm:py-3.5 pr-12 text-sm" />'+eye+'</div>'+
+          '<button id="aSubmit" class="btn-primary w-full rounded-2xl py-3.5 text-sm font-semibold">Sign in</button>';
+        document.getElementById('aSubmit').addEventListener('click', doLoginModal);
+        document.getElementById('togglePass').addEventListener('click', togglePass);
+      } else {
+        f.innerHTML = '<input id="aName" placeholder="Full name (optional)" class="input w-full rounded-2xl px-4 py-4 sm:py-3.5 text-sm" />'+
+          '<input id="aEmail" type="email" placeholder="Email" class="input w-full rounded-2xl px-4 py-4 sm:py-3.5 text-sm" />'+
+          '<div class="relative"><input id="aPass" type="password" placeholder="Password (8+ chars, letter + digit)" class="input w-full rounded-2xl px-4 py-4 sm:py-3.5 pr-12 text-sm" />'+eye+'</div>'+
+          '<button id="aSubmit" class="btn-primary w-full rounded-2xl py-3.5 text-sm font-semibold">Create account</button>';
+        document.getElementById('aSubmit').addEventListener('click', doSignupModal);
+        document.getElementById('togglePass').addEventListener('click', togglePass);
+      }
+    }
+    function togglePass() {
+      const inp = document.getElementById('aPass');
+      const icon = document.getElementById('eyeIcon');
+      if (inp.type === 'password') { inp.type = 'text'; icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.027m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>'; }
+      else { inp.type = 'password'; icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>'; }
+    }
+    async function doLoginModal() {
+      const email = document.getElementById('aEmail').value.trim();
+      const password = document.getElementById('aPass').value;
+      if (!email||!password) { document.getElementById('authErr').textContent='Email and password required'; return; }
+      try {
+        const d = await api('/api/v1/auth/login', { method:'POST', json:{email, password} });
+        state.token = d.session.access_token; state.refreshToken = d.session.refresh_token; localStorage.setItem('ds_token', state.token); localStorage.setItem('ds_refresh_token', state.refreshToken); state.user = d.user;
+        await loadMe(); requestLocation(); closeModal(); toast('Signed in','success'); render();
+      } catch(e){ document.getElementById('authErr').textContent = e.message; }
+    }
+    async function doSignupModal() {
+      const email = document.getElementById('aEmail').value.trim();
+      const password = document.getElementById('aPass').value;
+      const full_name = (document.getElementById('aName')||{}).value||null;
+      if (!email||!password) { document.getElementById('authErr').textContent='Email and password required'; return; }
+      try {
+        const d = await api('/api/v1/auth/signup', { method:'POST', json:{email, password, full_name: full_name?full_name.trim():null} });
+        if (d.session && d.session.access_token) { state.token = d.session.access_token; state.refreshToken = d.session.refresh_token; localStorage.setItem('ds_token', state.token); localStorage.setItem('ds_refresh_token', state.refreshToken); state.user = d.user; await loadMe(); requestLocation(); closeModal(); toast('Account created','success'); render(); }
+        else { document.getElementById('authErr').textContent = d.message || 'Account created. Please sign in.'; }
+      } catch(e){ document.getElementById('authErr').textContent = e.message; }
+    }
+    async function doLogout() {
+      try { await api('/api/v1/auth/logout', {method:'POST'}); } catch(e){}
+      state.token=null; state.refreshToken=null; state.user=null; localStorage.removeItem('ds_token'); localStorage.removeItem('ds_refresh_token');
+      toast('Signed out','success'); render();
+    }
+
+    /* ---------- actions ---------- */
+    async function doDetect() {
+      if (!state.token) { openAuth('login'); return; }
+      const fileInput = document.getElementById('detectFile');
+      const camInput = document.getElementById('detectCamera');
+      const file = (camInput && camInput.files && camInput.files[0]) || (fileInput && fileInput.files && fileInput.files[0]);
+      if (!file) { toast('Choose or capture an image first','error'); return; }
+      const btn = document.getElementById('detectBtn'); btn.disabled=true; btn.innerHTML='<span class="spinner"></span><span class="ml-2">Analysing…</span>';
+      const st = document.getElementById('detectStatus'); st.innerHTML='<span class="status-pill"><span class="pulse-dot"></span>Checking damage…</span>';
+      try {
+        const fd = new FormData(); fd.append('file', file);
+        const brandEl = document.getElementById('detectBrand');
+        const brand = brandEl ? brandEl.value.trim() : '';
+        if (brand) fd.append('label', brand);
+        state.carBrand = brand || null;
+        const lat = localStorage.getItem('ds_lat'); const lng = localStorage.getItem('ds_lng');
+        if (lat) fd.append('lat', lat);
+        if (lng) fd.append('lng', lng);
+        const d = await api('/api/v1/damage/detect', {method:'POST', body:fd});
+        state.reportId = d.report_id; state.imageUrl = d.image_url;
+        const img = document.getElementById('detectImg');
+        img.src = d.image_url; img.classList.remove('hidden');
+        const noDamage = (d.detection_count === 0);
+        const res = document.getElementById('detectResult'); res.classList.remove('hidden');
+        if (noDamage) {
+          res.innerHTML = '<div class="flex items-center gap-3 glass rounded-2xl p-4">' +
+            '<div class="w-10 h-10 rounded-xl bg-amber-400/20 flex items-center justify-center"><svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>' +
+            '<div><div class="text-sm font-semibold text-amber-300">No Damage Detected</div>' +
+            '<div class="text-xs text-gray-400 mt-0.5">The model found no damage in this photo</div></div></div>';
+          st.innerHTML = '<span class="status-pill"><span style="width:.5rem;height:.5rem;border-radius:999px;background:#fbbf24;box-shadow:0 0 10px #fbbf24"></span>No damage detected</span>';
+          toast('No damage detected','info');
+          ['detectDamageList','detectMechanics','detectMessage'].forEach(function(id){ const x = document.getElementById(id); if (x) { x.classList.add('hidden'); x.innerHTML=''; } });
+          const cb = document.getElementById('detectCanvas'); if (cb) { cb.classList.add('hidden'); cb.getContext('2d').clearRect(0,0,cb.width,cb.height); }
+        } else {
+          res.innerHTML = '<div class="flex items-center gap-3 glass rounded-2xl p-4">' +
+            '<div class="w-10 h-10 rounded-xl bg-emerald-400/20 flex items-center justify-center"><svg class="w-5 h-5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>' +
+            '<div><div class="text-sm font-semibold text-emerald-300">Damage Detected</div></div></div>';
+          st.innerHTML='<span class="status-pill"><span style="width:.5rem;height:.5rem;border-radius:999px;background:#34d399;box-shadow:0 0 10px #34d399"></span>Damage Detected</span>';
+          toast('Damage Detected','success');
+          setTimeout(function(){ drawBoxesOnCanvas('detectCanvas', d.image_url, d.report_id); renderDamagesWithPrice(d.report_id); }, 100);
+        }
+      } catch(e){ toast(e.message,'error'); st.textContent=e.message; }
+      finally { btn.disabled=false; btn.innerHTML='<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Detect damage'; }
+    }
+
+    async function renderDamagesWithPrice(rid) {
+      const el = document.getElementById('detectDamageList');
+      if (!el || !rid) return;
+      let rep;
+      try {
+        rep = await api('/api/v1/damage/reports/' + rid);
+      } catch(e) { return; }
+      const seen = new Set(); const uniq = [];
+      for (const d of (rep.detections || [])) {
+        if (seen.has(d.damage_class)) continue;
+        seen.add(d.damage_class); uniq.push(d);
+      }
+      if (!uniq.length) {
+        el.classList.remove('hidden');
+        el.innerHTML = '<div class="mt-4 flex items-center gap-3 glass rounded-2xl p-4">' +
+          '<div class="w-10 h-10 rounded-xl bg-amber-400/20 flex items-center justify-center shrink-0"><svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></div>' +
+          '<div><div class="text-sm font-semibold text-amber-300">No Damage Detected</div>' +
+          '<div class="text-xs text-gray-400 mt-0.5">The model found no damage in this photo</div></div></div>';
+        const dmsg = document.getElementById('detectMessage');
+        if (dmsg) { dmsg.classList.remove('hidden'); dmsg.innerHTML = ''; delete dmsg.dataset.damages; }
+        const mech = document.getElementById('detectMechanics'); if (mech) { mech.classList.add('hidden'); mech.innerHTML = ''; }
+        return;
+      }
+      let priced = null;
+      try {
+        priced = await api('/api/v1/pricing/estimate', { method: 'POST', json: { report_id: rid } });
+      } catch(e) { priced = null; }
+      const priceMap = {};
+      if (priced && priced.items) priced.items.forEach(function(it){ priceMap[it.damage_class] = it.price; });
+      const colors = ['#22d3ee','#a78bfa','#34d399','#fbbf24','#f87171','#fb923c'];
+      el.classList.remove('hidden');
+      el.innerHTML = '<div class="mt-4"><div class="text-sm font-semibold text-gray-300 mb-3">Damages & prices</div>' +
+        '<div class="grid sm:grid-cols-2 gap-3">' +
+        uniq.map(function(d, i){
+          const c = colors[i % colors.length];
+          const price = priceMap[d.damage_class];
+          return '<div class="glass rounded-2xl p-4 flex items-center gap-3">' +
+            '<div class="w-3 h-3 rounded-full" style="background:'+c+';box-shadow:0 0 8px '+c+'"></div>' +
+            '<div class="flex-1">' +
+              '<div class="text-sm font-medium text-white">' + d.damage_class + '</div>' +
+              '<div class="text-xs text-gray-400 mt-0.5">' + (d.damage_area_percentage != null ? d.damage_area_percentage + '% of image' : '') + '</div>' +
+            '</div>' +
+            '<div class="text-base font-semibold text-cyan-300">' + (price != null ? '₨ ' + price.toLocaleString() : '—') + '</div>' +
+          '</div>';
+        }).join('') +
+        '</div>' +
+        '<div class="mt-4 rounded-2xl px-4 sm:px-5 py-4 flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-400/15 via-cyan-400/10 to-violet-500/10 border border-emerald-400/20">' +
+          '<span class="font-display font-bold text-base sm:text-lg text-emerald-300">TOTAL</span>' +
+          '<span class="font-display text-2xl sm:text-3xl font-bold text-emerald-300">₨ ' + (priced && priced.total != null ? priced.total.toLocaleString() : '—') + '</span>' +
+        '</div>' +
+      '</div>';
+      const dmsg = document.getElementById('detectMessage');
+      if (dmsg) { dmsg.classList.remove('hidden'); dmsg.dataset.damages = JSON.stringify(uniq.map(function(d){ return d.damage_class; })); }
+      generateDamageMessage(rid);
+      const mech = document.getElementById('detectMechanics'); if (mech) mech.classList.remove('hidden');
+      renderNearbyMechanics('detectMechanics');
+    }
+
+    async function renderNearbyMechanics(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const lat = localStorage.getItem('ds_lat'); const lng = localStorage.getItem('ds_lng');
+      if (!lat || !lng) { el.innerHTML = '<div class="text-xs text-gray-400">Location not available.</div>'; return; }
+      try {
+        const d = await api('/api/v1/mechanics/nearby?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
+        const places = d.mechanics || [];
+        if (!places.length) { el.innerHTML = '<div class="text-xs text-gray-400">No car-repair shops found within 10 km.</div>'; return; }
+        el.innerHTML = '<div class="text-sm font-semibold text-white mt-6 mb-3">Nearby mechanics (tap to select)</div>' +
+          '<div class="space-y-2.5 sm:space-y-3">' +
+          places.map(function(p) {
+            const km = (p.distance_m / 1000).toFixed(1);
+            const maps = 'https://www.google.com/maps/search/?api=1&query=' + p.lat + ',' + p.lng;
+            const isSel = state.selectedMechanic && state.selectedMechanic.name === p.name && Math.abs(state.selectedMechanic.lat - p.lat) < 0.0001;
+            return '<button class="mech-card glass w-full rounded-2xl p-4 flex items-center gap-3 transition text-left ' + (isSel ? 'ring-2 ring-cyan-400/60 border-cyan-400/40' : 'hover:border-cyan-400/40') + '" data-mech="1" data-name="' + (p.name || 'Car repair').replace(/"/g, '&quot;') + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-phone="' + (p.phone || '') + '" data-address="' + ((p.address || '').replace(/"/g, '&quot;')) + '">' +
+              '<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/25 to-amber-400/5 text-amber-300 flex items-center justify-center shrink-0"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>' +
+              '<div class="flex-1 min-w-0">' +
+                '<div class="text-sm font-semibold text-white">' + (p.name || 'Car repair') + '</div>' +
+                '<div class="text-xs text-gray-400 mt-0.5">' + km + ' km away' + (p.address ? ' · ' + p.address : '') + '</div>' +
+                (p.phone ? '<div class="text-xs text-cyan-300 mt-1">' + p.phone + '</div>' : '') +
+                (p.opening_hours ? '<div class="text-[10px] text-gray-500 mt-1">' + p.opening_hours + '</div>' : '') +
+              '</div>' +
+              '<a href="' + maps + '" target="_blank" rel="noopener" class="btn-ghost rounded-xl p-3 shrink-0 hover:bg-white/10" aria-label="View on Google Maps" onclick="event.stopPropagation()">' +
+                '<svg class="w-6 h-6 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
+              '</a>' +
+            '</button>';
+          }).join('') +
+          '</div>';
+        el.querySelectorAll('.mech-card').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            state.selectedMechanic = {
+              name: btn.dataset.name,
+              lat: parseFloat(btn.dataset.lat),
+              lng: parseFloat(btn.dataset.lng),
+              phone: btn.dataset.phone || null,
+              address: btn.dataset.address || null,
+            };
+            renderNearbyMechanics('detectMechanics');
+            if (state.reportId) generateDamageMessage(state.reportId);
+          });
+        });
+      } catch(e) { el.innerHTML = '<div class="text-xs text-red-300">' + e.message + '</div>'; }
+    }
+
+    async function generateDamageMessage(rid) {
+      const el = document.getElementById('detectMessage');
+      if (!el || !rid) return;
+      const damages = el.dataset.damages ? JSON.parse(el.dataset.damages) : [];
+      if (!damages.length) return;
+      try {
+        const brandEl = document.getElementById('detectBrand');
+        const carBrand = state.carBrand || (brandEl && brandEl.value ? brandEl.value : null);
+        const body = { user_id: state.user.id, report_id: rid, damage_classes: damages, mechanic_name: state.selectedMechanic ? state.selectedMechanic.name : null, car_brand: carBrand };
+        const d = await api('/api/v1/message_made', { method: 'POST', json: body });
+        const lat = localStorage.getItem('ds_lat');
+        const lng = localStorage.getItem('ds_lng');
+        const image_url = state.imageUrl || '';
+        const waText = d.message + '\n\nImage: ' + image_url + '\nLocation: https://www.google.com/maps?q=' + lat + ',' + lng;
+        const waTarget = (state.selectedMechanic && state.selectedMechanic.phone) ? (function(p){ const digits = (p||'').replace(/\D/g,''); return digits.startsWith('0') ? '92' + digits.slice(1) : digits; })(state.selectedMechanic.phone) : '92343524065';
+        const waLink = 'https://wa.me/' + waTarget + '?text=' + encodeURIComponent(waText);
+        const mechLabel = state.selectedMechanic && state.selectedMechanic.name ? state.selectedMechanic.name : 'Mechanic';
+        el.innerHTML = '<div class="glass rounded-2xl p-4 sm:p-5 mt-2">' +
+          '<div class="flex items-center justify-between gap-3 mb-3">' +
+            '<div class="flex flex-col min-w-0">' +
+              '<span class="text-[10px] sm:text-[11px] uppercase tracking-widest text-cyan-300">Message to</span>' +
+              '<span class="text-sm font-semibold text-white truncate">' + mechLabel + '</span>' +
+            '</div>' +
+            '<button id="regenMsgBtn" class="btn-ghost rounded-xl px-3.5 py-2 text-xs shrink-0">Regenerate</button>' +
+          '</div>' +
+          '<p class="whitespace-pre-wrap text-sm leading-relaxed text-gray-200">' + d.message + '</p>' +
+          '<a href="' + waLink + '" target="_blank" rel="noopener" class="mt-4 inline-flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-3.5 min-h-[50px] text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background:#25D366;box-shadow:0 10px 30px -10px rgba(37,211,102,0.6)">' +
+            '<svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.14 1.6 5.95L2.1 22l4.33-1.57c1.73.94 3.68 1.44 5.61 1.44 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm0 18.15c-1.72 0-3.4-.46-4.88-1.33l-.35-.21-2.87 1.04 1.02-2.8-.23-.38a8.18 8.18 0 01-1.27-4.36c0-4.52 3.68-8.2 8.2-8.2 2.19 0 4.25.86 5.81 2.42 1.56 1.56 2.42 3.62 2.42 5.81 0 4.52-3.69 8.2-8.31 8.2zm4.52-6.16c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.17.25-.64.8-.79.97-.14.16-.29.18-.54.06a6.7 6.7 0 01-1.96-1.21 7.35 7.35 0 01-1.37-1.7c-.15-.25 0-.39.1-.51.1-.1.23-.27.34-.4.11-.14.15-.23.23-.39.08-.15.04-.29-.02-.4-.06-.12-.56-1.35-.76-1.85-.2-.48-.4-.42-.55-.42-.14 0-.3 0-.46 0a.88.88 0 00-.63.3c-.22.24-.85.83-.85 2.02 0 1.2.87 2.35.99 2.51.12.16 1.7 2.6 4.12 3.65.58.25 1.03.4 1.38.51.58.19 1.1.16 1.52.1.46-.07 1.46-.6 1.66-1.17.21-.58.21-1.07.14-1.17-.06-.1-.22-.16-.46-.28z"/></svg>' +
+            'WhatsApp — send to ' + mechLabel +
+          '</a>' +
+        '</div>';
+        const rb = document.getElementById('regenMsgBtn'); if (rb) rb.addEventListener('click', function(){ generateDamageMessage(rid); });
+      } catch(e) { /* silent */ }
+    }
+
+    function drawBoxesOnCanvas(canvasId, url, rid) {
+      const canvas = document.getElementById(canvasId);
+      const img = document.getElementById(canvasId==='detectCanvas'?'detectImg':'drawImg');
+      if (!img) return;
+      const doDraw = function(boxes) {
+        if (!img.complete || !img.naturalWidth) {
+          img.onload = function() { doDraw(boxes); };
+          return;
+        }
+        const w = img.naturalWidth, h = img.naturalHeight;
+        canvas.width = w; canvas.height = h;
+        canvas.style.width = '100%'; canvas.style.height = 'auto';
+        canvas.classList.remove('hidden');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const colors = ['#22d3ee','#a78bfa','#34d399','#fbbf24','#f87171','#fb923c'];
+        (boxes.boxes || []).forEach(function(b, i) {
+          const c = colors[i % colors.length];
+          const x = b.x, y = b.y, bw = b.width, bh = b.height;
+          ctx.globalAlpha = 0.85;
+          ctx.shadowColor = c; ctx.shadowBlur = 12;
+          ctx.strokeStyle = c; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.roundRect(x - bw/2, y - bh/2, bw, bh, 8); ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = c + '18'; ctx.fill();
+          const label = (b.damage_class || '') + (b.confidence != null ? '  ' + (b.confidence*100).toFixed(0) + '%' : '');
+          ctx.font = 'bold 12px Inter, sans-serif';
+          const tw = ctx.measureText(label).width + 12;
+          const lx = x - bw/2, ly = y - bh/2 - 22;
+          ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(lx, ly, tw, 20, 6); ctx.fill();
+          ctx.fillStyle = '#0a0e1a'; ctx.fillText(label, lx + 6, ly + 14);
+          ctx.globalAlpha = 1.0;
+        });
+      };
+      api('/api/v1/damage/reports/' + rid)
+        .then(function(rep) {
+          const boxes = {
+            image_url: rep.image_url,
+            boxes: (rep.detections || []).map(function(d) {
+              return { damage_class: d.damage_class, x: d.x, y: d.y, width: d.width, height: d.height, confidence: d.confidence };
+            })
+          };
+          doDraw(boxes);
+        })
+        .catch(function(e) { toast(e.message, 'error'); });
+    }
+
+    function render() {
+      const root = document.getElementById('app');
+      root.innerHTML = '';
+      const node = document.createElement('div');
+      node.innerHTML = state.user ? appShell() : landing();
+      root.appendChild(node);
+      bind(node);
+      if (state.user) {
+        try { renderPanel(); } catch(e) { console.error('renderPanel error:', e); }
+      }
+    }
+
+    function boot() {
+      // restore: if token exists, try to refresh then loadMe
+      (async function(){
+        if (state.token && state.refreshToken) { try { await refreshAuth(); } catch(e) {} }
+        await loadMe();
+        if (state.token) requestLocation();
+        render();
+      })();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
