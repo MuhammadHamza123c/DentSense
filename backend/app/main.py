@@ -86,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # side list must never lock the deployed frontend out (preflights would
     # fail with 400 and every browser request would be blocked).
     first_party_origins = (
+        "https://dentsense.vercel.app",
         "https://dentsense-frontend.vercel.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",

@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     log_json: bool = False
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
+            "https://dentsense.vercel.app",
             "https://dentsense-frontend.vercel.app",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
