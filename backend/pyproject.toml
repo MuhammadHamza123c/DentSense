@@ -3,6 +3,26 @@ name = "cardamageai-backend"
 version = "0.1.0"
 description = "AI-powered car damage detection and repair cost estimation backend"
 requires-python = ">=3.11"
+# Keep in sync with requirements.txt. Vercel's build prefers pyproject.toml
+# over requirements.txt when both exist (vercel/vercel#14041), so the runtime
+# dependencies MUST be declared here too — otherwise the deploy installs
+# nothing and fails with "No module named 'fastapi'".
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.11.7",
+    "pydantic-settings==2.10.1",
+    "email-validator==2.2.0",
+    "python-dotenv==1.0.1",
+    "python-multipart==0.0.20",
+    "httpx==0.28.1",
+    "supabase==2.34.1",
+    "inference-sdk==1.8.4",
+]
+
+[tool.uv]
+# Virtual project (run as source, never built/installed as a package).
+package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
