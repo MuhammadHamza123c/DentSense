@@ -61,7 +61,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
     cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:5173"]
+        default_factory=lambda: [
+            "https://dentsense-frontend.vercel.app",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
     )
 
     # -- Roboflow ------------------------------------------------------------
